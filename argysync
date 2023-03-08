@@ -3275,7 +3275,7 @@ local MainTable = {
     Speed = 0,
 }
 
-local Window = library:Window({name = "pintohaxx from walmart"})
+local Window = library:Window({name = "argysync from walmart"})
 
 local AimbotTab = Window:Tab({name = "Aimbot"})
 
