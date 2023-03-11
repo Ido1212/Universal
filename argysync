@@ -1,4 +1,9 @@
 --[[
+**Change Logs
+[+] Updated to lastest ui version
+[+] Added Skeleton ESP (Will drop fps insanely, You can dm me if you want it removed because of the fps)
+
+--[[
 Menu Bind set to default: Insert, Changable in first line.
 Use loadstring incase I update it.
 This script has been made by argyyy#1355, Which is me.
@@ -8,9 +13,7 @@ I would like to hear your opinion and suggestion, even if its bad or its good: a
 I ask, don't steal/paste off the code, few months ago I used to do that and it was a mistake it is more fun to do it yourself.
 Anyways this script was made in Synapse X, It might work on other executors but this is the most trusted one.
 Enjoy Your Time!
---]]
-local MenuBind = Enum.KeyCode.Insert
-
+--]]local MenuBind = Enum.KeyCode.Insert
 local uis = game:GetService("UserInputService")
 local rs = game:GetService("RunService")
 local ts = game:GetService("TweenService")
@@ -18,10 +21,6 @@ local plrs = game:GetService("Players")
 local stats = game:GetService("Stats")
 
 local lplr = plrs.LocalPlayer
-
--- // some locals!!
-
-local load_start = tick()
 
 -- / vector 2
 
@@ -582,7 +581,7 @@ function library.Window(self, info, theme)
 
             -- // section
 
-            local section = {name = name, instances = {}, scale = 0, things = {buttons = {}, toggles = {}, textboxes = {}, dropdowns = {}, sliders = {}, colorpickers ={}, keybinds = {}, lists = {}}, rna = render_non_attached}
+            local section = {name = name, side = side, instances = {}, scale = 0, things = {buttons = {}, toggles = {}, textboxes = {}, dropdowns = {}, sliders = {}, colorpickers ={}, keybinds = {}, lists = {}}, rna = render_non_attached}
 
             local section_frame 
 
@@ -675,7 +674,10 @@ function library.Window(self, info, theme)
             end
 
             function section.Update(self)
-                section_frame.Size = v2new(self.rna and 228 or tabs_frame.Size.X / 2 - 12, self.scale > 0 and self.scale or 10)
+
+                local tside = tab.sides[self.side == "left" and 1 or 2]
+
+                section_frame.Size = v2new(self.rna and 228 or tabs_frame.Size.X / 2 - 12, table.find(tside, self) == #tside and tabs_frame.Size.Y - (section_frame.GetOffset().Y+5) or self.scale > 0 and self.scale or 10)
                 section_inline.Size = section_frame.Size + v2new(2, 2)
                 section_outline.Size = section_inline.Size + v2new(2, 2)
                 section_accent2.Size = v2new(section_frame.Size.X - (11 + (#name * 7)), 2)
@@ -1715,11 +1717,13 @@ function library.Window(self, info, theme)
                 local def = info.def or min
                 local dec = info.dec or 1
                 local suf = info.suf or ""
+                local mintval = info.mintval or info.min_text_value
+                local maxtval = info.maxtval or info.max_text_value
                 local flag = info.flag or ""
                 local callback = info.callback or function() end
                 local pointer = info.pointer or tab.name .. section.name .. name
 
-                local slider = {name = name, flag = flag, pointer = pointer, value = def, min = min, max = max, suf = suf, dec = dec, holding = false, callback = callback}
+                local slider = {name = name, flag = flag, pointer = pointer, value = def, min = min, max = max, suf = suf, dec = dec, mintval = mintval, maxtval = maxtval, holding = false, callback = callback}
 
                 if pointer then
                     library.pointers[pointer] = slider
@@ -1734,8 +1738,17 @@ function library.Window(self, info, theme)
                     Parent = section_frame
                 })
 
+                local slider_pm = utility:Draw("Text", v2new(section_frame.Size.X-33, 0), {
+                    Color = c3rgb(255, 255, 255),
+                    Outline = true,
+                    Size = 13,
+                    Font = 2,
+                    Text = "- +",
+                    Parent = slider_title
+                })
+
                 local slider_frame = utility:Draw("Square", v2new(0, 16), {
-                    Size = v2new(section_frame.Size.X - 12, 8),
+                    Size = v2new(section_frame.Size.X - 12, 10),
                     Color = window.theme.lcont,
                     Group = "lcont",
                     Parent = slider_title
@@ -1779,16 +1792,17 @@ function library.Window(self, info, theme)
                 end
                 
                 function slider.Update(self)
-                    slider_frame.Size = v2new(section_frame.Size.X - 12, 8)
+                    slider_frame.Size = v2new(section_frame.Size.X - 12, 10)
                     slider_outline.Size = slider_frame.Size + v2new(2, 2)
                     slider_gradient.Size = slider_frame.Size
                     slider_value.SetOffset(v2new(slider_frame.Size.X/2, -2))
+                    slider_pm.SetOffset(v2new(section_frame.Size.X-33, 0))
 
-                    slider_value.Text = tostring(self.value) .. "/" .. tostring(self.max) .. self.suf
+                    slider_value.Text = self.mintval and self.value == self.min and self.mintval or self.maxtval and self.value == self.max and self.maxtval or ("%s%s"):format(tostring(self.value), tostring(slider.suf))
 
                     local percent = 1 - (self.max - self.value) / (self.max - self.min)
 
-                    slider_bar.Size = Vector2.new(percent * slider_frame.Size.X, slider_frame.Size.Y)
+                    slider_bar.Size = v2new(percent * slider_frame.Size.X, slider_frame.Size.Y)
 
                     if self.flag then
                         library.flags[self.flag] = self.value
@@ -1807,11 +1821,26 @@ function library.Window(self, info, theme)
 
                 utility:Connect(uis.InputBegan, function(input)
                     if input.UserInputType == Enum.UserInputType.MouseButton1 and main_frame.Visible and (tab.on or table.find(window.rna, section)) and not window:FakeRealMouseFuckingImAloneGoingToKillMyselfWithKnife(section) and utility:MouseOverPosition({section_frame.Position + v2new(0, slider_title.GetOffset().Y), section_frame.Position + v2new(section_frame.Size.X, slider_title.GetOffset().Y + 29)}) then
-                        slider.holding = true
-                        local percent = math.clamp(uis:GetMouseLocation().X - slider_bar.Position.X, 0, slider_frame.Size.X) / slider_frame.Size.X
-                        local value = math.floor((slider.min + (slider.max - slider.min) * percent) * slider.dec) / slider.dec
-                        value = math.clamp(value, slider.min, slider.max)
-                        slider:Set(value)
+                        if utility:MouseOverPosition({section_frame.Position + v2new(section_frame.Size.X-27, slider_title.GetOffset().Y), section_frame.Position + v2new(section_frame.Size.X, slider_title.GetOffset().Y+14)}) then
+                            local offset = uis:GetMouseLocation().X - slider_pm.Position.X
+                            if offset < 15 then
+                                slider:Set(math.clamp(math.floor((slider.value - (1 / slider.dec)) * slider.dec) / slider.dec, slider.min, slider.max))
+                            elseif offset > 15 then
+                                local value_fix = (slider.value + (1 / slider.dec))
+
+                                if value_fix % (1 / slider.dec) ~= 0 then
+                                    value_fix = math.round(value_fix * (slider.dec * 10)) / (slider.dec * 10)
+                                end
+
+                                slider:Set(math.clamp(math.floor(value_fix * slider.dec) / slider.dec, slider.min, slider.max))
+                            end
+                        else
+                            slider.holding = true
+                            local percent = math.clamp(uis:GetMouseLocation().X - slider_bar.Position.X, 0, slider_frame.Size.X) / slider_frame.Size.X
+                            local value = math.floor((slider.min + (slider.max - slider.min) * percent) * slider.dec) / slider.dec
+                            value = math.clamp(value, slider.min, slider.max)
+                            slider:Set(value)
+                        end
                     end
                 end)
 
@@ -1834,11 +1863,11 @@ function library.Window(self, info, theme)
                     end
                 end)
 
-                self.instances = utility:Combine(self.instances, {slider_title, slider_frame, slider_outline, slider_bar, slider_gradient, slider_value})
+                slider.instances = {slider_title, slider_frame, slider_outline, slider_bar, slider_gradient, slider_value, slider_pm}
 
-                slider.instances = {slider_title, slider_frame, slider_outline, slider_bar, slider_gradient, slider_value}
+                self.instances = utility:Combine(self.instances, slider.instances)
 
-                self:UpdateScale(26)
+                self:UpdateScale(28)
 
                 table.insert(self.things.sliders, slider)
 
@@ -2204,7 +2233,9 @@ function library.Window(self, info, theme)
                 })
 
                 function list.fix_string(self, value)
-                    return #value < 30 and value or value:sub(1, 27) .. "..."
+                    local max_symbols = math.floor(list_frame.Size.X/7)
+
+                    return #value < max_symbols and value or value:sub(1, max_symbols-3) .. "..."
                 end
 
                 function list.draw_options(self)
@@ -2882,13 +2913,13 @@ function library.Window(self, info, theme)
         local tooltip = {instances = {}}
 
         local tt_frame = utility:Draw("Square", nil, {
-            Color = window.theme.dcont,
+            Color = self.theme.dcont,
             Group = "dcont",
             Size = v2new(0, 17)
         })
 
         local tt_frame_outline = utility:Draw("Square", v2new(-1, -1), {
-            Color = window.theme.outline,
+            Color = self.theme.outline,
             Group = "outline",
             Size = tt_frame.Size + v2new(2, 2),
             Filled = false,
@@ -2896,7 +2927,7 @@ function library.Window(self, info, theme)
         })
 
         local tt_accent = utility:Draw("Square", v2zero, {
-            Color = self.accent,
+            Color = self.theme.accent,
             Size = v2new(2, tt_frame.Size.Y),
             Group = "accent",
             Parent = tt_frame
@@ -3161,7 +3192,6 @@ function library.Window(self, info, theme)
     return window
 end
 
-
 local Workspace = game:GetService("Workspace")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -3240,6 +3270,18 @@ function InsertMultiProperties(Table, Properties)
     end
 end
 
+function GetAllBodyParts(v)
+    local Parts = {}
+
+    if v.Character.Humanoid.RigType == Enum.HumanoidRigType.R6 then
+        InsertMultiProperties(Parts, {"Head", "Torso", "Right Arm", "Left Arm", "Left Leg", "Right Leg", "HumanoidRootPart"})
+    elseif v.Character.Humanoid.RigType == Enum.HumanoidRigType.R15 then
+        InsertMultiProperties(Parts, {"Head", "UpperTorso", "HumanoidRootPart", "LowerTorso", "LeftLowerArm", "LeftUpperArm", "LeftHand", "RightLowerArm", "RightUpperArm", "RightHand", "LeftLowerLeg", "LeftUpperLeg", "LeftFoot", "RightUpperLeg", "RightLowerLeg", "RightFoot"})
+    end
+
+    return Parts
+end
+
 local MainTable = {
     ESPEnabled = false,
     ESPTeamCheck = false,
@@ -3255,6 +3297,8 @@ local MainTable = {
     DistanceColor = Color3.fromRGB(0,255,0),
     DistanceCheck = false,
     DistanceCheckAmount = 1,
+    Skeleton = false,
+    SkeletonColor = Color3.fromRGB(0,255,0),
     TriggerBotEnabled = false,
     Delay = 0,
     TriggerBotTeamCheck = false,
@@ -3273,9 +3317,15 @@ local MainTable = {
     AimTeamCheck = false,
     SpeedMultiplier = false,
     Speed = 0,
+    AspectRatio = false,
+    Ratio = 0,
+    Chams = false,
+    ChamsColor = Color3.fromRGB(0,255,0),
+    Glow = false,
+    GlowColor = Color3.fromRGB(0,255,0),
 }
 
-local Window = library:Window({name = "argysync from walmart"})
+local Window = library:Window({name = "pintohaxx from walmart"})
 
 local AimbotTab = Window:Tab({name = "Aimbot"})
 
@@ -3485,12 +3535,20 @@ game:GetService("RunService").RenderStepped:Connect(function()
 else
     MainTarget = nil
 end
+
+
 end)
 
 local PlayerESPSection = VisualsTab:Section({name = "Player ESP", side = "left"})
 
 local ESPToggle = PlayerESPSection:Toggle({name = "Enabled", def = false, callback = function(v)  
     MainTable.ESPEnabled = v
+end})
+
+local SkeletonToggle = PlayerESPSection:Toggle({name = "Skeleton", def = false, callback = function(v)  
+    MainTable.Skeleton = v
+end}):Colorpicker({name = "Bruh", def = Color3.fromRGB(0,255,0), callback = function(v)
+    MainTable.SkeletonColor = v
 end})
 
 local BoxToggle = PlayerESPSection:Toggle({name = "Box", def = false, callback = function(v)  
@@ -3549,6 +3607,9 @@ end
 
 
 local CC = game.Workspace.CurrentCamera
+local Camera = game.Workspace.Camera
+local Draw = Drawing.new
+local Vec2 = Vector2.new
 
 function PlayerESP(Player)
     local BoxOutline = Drawing.new("Square")
@@ -3602,6 +3663,106 @@ function PlayerESP(Player)
     DistanceText.OutlineColor = Color3.fromRGB(0,0,0)
     DistanceText.Font = 2
 
+    
+    local Head_Torso_Skeleton = Draw("Line")
+    Head_Torso_Skeleton.Thickness = 1
+    Head_Torso_Skeleton.Visible = false
+    Head_Torso_Skeleton.Transparency = 1
+    Head_Torso_Skeleton.ZIndex = 1
+    Head_Torso_Skeleton.Color = MainTable.SkeletonColor
+
+    local Torso_LowerTorso_Skeleton = Draw("Line")
+    Torso_LowerTorso_Skeleton.Thickness = 1
+    Torso_LowerTorso_Skeleton.Visible = false
+    Torso_LowerTorso_Skeleton.Transparency = 1
+    Torso_LowerTorso_Skeleton.ZIndex = 1
+    Torso_LowerTorso_Skeleton.Color = MainTable.SkeletonColor
+
+    local Torso_RightUpperArm_Skeleton = Draw("Line")
+    Torso_RightUpperArm_Skeleton.Thickness = 1
+    Torso_RightUpperArm_Skeleton.Visible = false
+    Torso_RightUpperArm_Skeleton.Transparency = 1
+    Torso_RightUpperArm_Skeleton.ZIndex = 1
+    Torso_RightUpperArm_Skeleton.Color = MainTable.SkeletonColor
+
+    local Torso_RightLowerArm_Skeleton = Draw("Line")
+    Torso_RightLowerArm_Skeleton.Thickness = 1
+    Torso_RightLowerArm_Skeleton.Visible = false
+    Torso_RightLowerArm_Skeleton.Transparency = 1
+    Torso_RightLowerArm_Skeleton.ZIndex = 1
+    Torso_RightLowerArm_Skeleton.Color = MainTable.SkeletonColor
+
+    local Torso_RightHand_Skeleton = Draw("Line")
+    Torso_RightHand_Skeleton.Thickness = 1
+    Torso_RightHand_Skeleton.Visible = false
+    Torso_RightHand_Skeleton.Transparency = 1
+    Torso_RightHand_Skeleton.ZIndex = 1
+    Torso_RightHand_Skeleton.Color = MainTable.SkeletonColor
+
+    local Torso_LeftUpperArm_Skeleton = Draw("Line")
+Torso_LeftUpperArm_Skeleton.Thickness = 1
+Torso_LeftUpperArm_Skeleton.Visible = false
+Torso_LeftUpperArm_Skeleton.Transparency = 1
+Torso_LeftUpperArm_Skeleton.ZIndex = 1
+Torso_LeftUpperArm_Skeleton.Color = MainTable.SkeletonColor
+
+local Torso_LeftLowerArm_Skeleton = Draw("Line")
+Torso_LeftLowerArm_Skeleton.Thickness = 1
+Torso_LeftLowerArm_Skeleton.Visible = false
+Torso_LeftLowerArm_Skeleton.Transparency = 1
+Torso_LeftLowerArm_Skeleton.ZIndex = 1
+Torso_LeftLowerArm_Skeleton.Color = MainTable.SkeletonColor
+
+local Torso_LeftHand_Skeleton = Draw("Line")
+Torso_LeftHand_Skeleton.Thickness = 1
+Torso_LeftHand_Skeleton.Visible = false
+Torso_LeftHand_Skeleton.Transparency = 1
+Torso_LeftHand_Skeleton.ZIndex = 1
+Torso_LeftHand_Skeleton.Color = MainTable.SkeletonColor
+
+    local LowerTorso_RightUpperLeg_Skeleton = Draw("Line")
+    LowerTorso_RightUpperLeg_Skeleton.Thickness = 1
+    LowerTorso_RightUpperLeg_Skeleton.Visible = false
+    LowerTorso_RightUpperLeg_Skeleton.Transparency = 1
+    LowerTorso_RightUpperLeg_Skeleton.ZIndex = 1
+    LowerTorso_RightUpperLeg_Skeleton.Color = MainTable.SkeletonColor
+
+    local RightUpperLeg_RightLowerLeg_Skeleton = Draw("Line")
+    RightUpperLeg_RightLowerLeg_Skeleton.Thickness = 1
+    RightUpperLeg_RightLowerLeg_Skeleton.Visible = false
+    RightUpperLeg_RightLowerLeg_Skeleton.Transparency = 1
+    RightUpperLeg_RightLowerLeg_Skeleton.ZIndex = 1
+    RightUpperLeg_RightLowerLeg_Skeleton.Color = MainTable.SkeletonColor
+
+    local RightLowerLeg_RightFoot_Skeleton = Draw("Line")
+    RightLowerLeg_RightFoot_Skeleton.Thickness = 1
+    RightLowerLeg_RightFoot_Skeleton.Visible = false
+    RightLowerLeg_RightFoot_Skeleton.Transparency = 1
+    RightLowerLeg_RightFoot_Skeleton.ZIndex = 1
+    RightLowerLeg_RightFoot_Skeleton.Color = MainTable.SkeletonColor
+
+    local LowerTorso_LeftUpperLeg_Skeleton = Draw("Line")
+LowerTorso_LeftUpperLeg_Skeleton.Thickness = 1
+LowerTorso_LeftUpperLeg_Skeleton.Visible = false
+LowerTorso_LeftUpperLeg_Skeleton.Transparency = 1
+LowerTorso_LeftUpperLeg_Skeleton.ZIndex = 1
+LowerTorso_LeftUpperLeg_Skeleton.Color = MainTable.SkeletonColor
+
+local LeftUpperLeg_LeftLowerLeg_Skeleton = Draw("Line")
+LeftUpperLeg_LeftLowerLeg_Skeleton.Thickness = 1
+LeftUpperLeg_LeftLowerLeg_Skeleton.Visible = false
+LeftUpperLeg_LeftLowerLeg_Skeleton.Transparency = 1
+LeftUpperLeg_LeftLowerLeg_Skeleton.ZIndex = 1
+LeftUpperLeg_LeftLowerLeg_Skeleton.Color = MainTable.SkeletonColor
+
+local LeftLowerLeg_LeftFoot_Skeleton = Draw("Line")
+LeftLowerLeg_LeftFoot_Skeleton.Thickness = 1
+LeftLowerLeg_LeftFoot_Skeleton.Visible = false
+LeftLowerLeg_LeftFoot_Skeleton.Transparency = 1
+LeftLowerLeg_LeftFoot_Skeleton.ZIndex = 1
+LeftLowerLeg_LeftFoot_Skeleton.Color = MainTable.SkeletonColor
+
+
     game:GetService("RunService").RenderStepped:Connect(function()
         if Player.Character ~= nil and Player ~= game.Players.LocalPlayer and Player.Character:FindFirstChild("Humanoid") ~= nil and Player.Character:FindFirstChild("HumanoidRootPart") ~= nil and game.Players.LocalPlayer.Character ~= nil and game.Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart") ~= nil and Player.Character.Humanoid.Health > 0 and TeamCheck(Player) then
 
@@ -3613,7 +3774,23 @@ function PlayerESP(Player)
 
         local RootVector,OnScreen = CC:WorldToViewportPoint(Player.Character.HumanoidRootPart.Position)
         local HeadVector,Visible = CC:WorldToViewportPoint(Player.Character.Head.Position)
-        local LeftFoot,Visible = CC:WorldToViewportPoint(Player.Character.HumanoidRootPart.Position - Vector3.new(0,3.4,0))    
+        local LeftFoot,Visible = CC:WorldToViewportPoint(Player.Character.HumanoidRootPart.Position - Vector3.new(0,3.4,0)) 
+        local HeadV = Camera:WorldToViewportPoint(Player.Character.Head.Position)
+        local TorsoV = Camera:WorldToViewportPoint(Player.Character.UpperTorso.Position)
+        local LowerTorsoV = Camera:WorldToViewportPoint(Player.Character.LowerTorso.Position)
+        local RULV = Camera:WorldToViewportPoint(Player.Character.RightUpperLeg.Position)
+        local RLLV = Camera:WorldToViewportPoint(Player.Character.RightLowerLeg.Position)
+        local RFV = Camera:WorldToViewportPoint(Player.Character.RightFoot.Position)
+        local LULV = Camera:WorldToViewportPoint(Player.Character.LeftUpperLeg.Position)
+        local LLLV = Camera:WorldToViewportPoint(Player.Character.LeftLowerLeg.Position)
+        local LFV = Camera:WorldToViewportPoint(Player.Character.LeftFoot.Position)
+        local LUAV = Camera:WorldToViewportPoint(Player.Character.LeftUpperArm.Position)
+        local LLAV = Camera:WorldToViewportPoint(Player.Character.LeftLowerArm.Position)
+        local LHV = Camera:WorldToViewportPoint(Player.Character.LeftHand.Position)
+        local RUAV = Camera:WorldToViewportPoint(Player.Character.RightUpperArm.Position)
+        local RLAV = Camera:WorldToViewportPoint(Player.Character.RightLowerArm.Position)
+        local RHV = Camera:WorldToViewportPoint(Player.Character.RightHand.Position)
+
 
         if OnScreen then
 
@@ -3659,6 +3836,64 @@ function PlayerESP(Player)
 
         DistanceText.Color = MainTable.DistanceColor
 
+        
+        Head_Torso_Skeleton.From = Vec2(HeadV.X, HeadV.Y)
+        Head_Torso_Skeleton.To = Vec2(TorsoV.X, TorsoV.Y)
+
+        Torso_LowerTorso_Skeleton.From = Vec2(TorsoV.X, TorsoV.Y)
+        Torso_LowerTorso_Skeleton.To = Vec2(LowerTorsoV.X, LowerTorsoV.Y)
+
+        LowerTorso_RightUpperLeg_Skeleton.From = Vec2(LowerTorsoV.X, LowerTorsoV.Y)
+        LowerTorso_RightUpperLeg_Skeleton.To = Vec2(RULV.X, RULV.Y)
+
+        LowerTorso_LeftUpperLeg_Skeleton.From = Vec2(LowerTorsoV.X, LowerTorsoV.Y)
+        LowerTorso_LeftUpperLeg_Skeleton.To = Vec2(LULV.X, LULV.Y)
+
+        RightUpperLeg_RightLowerLeg_Skeleton.From = Vec2(RULV.X, RULV.Y)
+        RightUpperLeg_RightLowerLeg_Skeleton.To = Vec2(RLLV.X, RLLV.Y)
+
+        RightLowerLeg_RightFoot_Skeleton.From = Vec2(RLLV.X, RLLV.Y)
+        RightLowerLeg_RightFoot_Skeleton.To = Vec2(RFV.X, RFV.Y)
+
+        LeftUpperLeg_LeftLowerLeg_Skeleton.From = Vec2(LULV.X, LULV.Y)
+        LeftUpperLeg_LeftLowerLeg_Skeleton.To = Vec2(LLLV.X, LLLV.Y)
+        
+        LeftLowerLeg_LeftFoot_Skeleton.From = Vec2(LLLV.X, LLLV.Y)
+        LeftLowerLeg_LeftFoot_Skeleton.To = Vec2(LFV.X, LFV.Y)
+
+        Torso_RightUpperArm_Skeleton.From = Vec2(TorsoV.X, TorsoV.Y)
+        Torso_RightUpperArm_Skeleton.To = Vec2(RUAV.X, RUAV.Y)
+
+        Torso_RightLowerArm_Skeleton.From = Vec2(RUAV.X, RUAV.Y)
+        Torso_RightLowerArm_Skeleton.To = Vec2(RLAV.X, RLAV.Y)
+
+        Torso_RightHand_Skeleton.From = Vec2(RLAV.X, RLAV.Y)
+        Torso_RightHand_Skeleton.To = Vec2(RHV.X, RHV.Y)
+
+        Torso_LeftUpperArm_Skeleton.From = Vec2(TorsoV.X, TorsoV.Y)
+        Torso_LeftUpperArm_Skeleton.To = Vec2(LUAV.X, LUAV.Y)
+
+        Torso_LeftLowerArm_Skeleton.From = Vec2(LUAV.X, LUAV.Y)
+        Torso_LeftLowerArm_Skeleton.To = Vec2(LLAV.X, LLAV.Y)
+
+        Torso_LeftHand_Skeleton.From = Vec2(LLAV.X, LLAV.Y)
+        Torso_LeftHand_Skeleton.To = Vec2(LHV.X, LHV.Y)
+
+        LeftLowerLeg_LeftFoot_Skeleton.Color = MainTable.SkeletonColor
+        LeftUpperLeg_LeftLowerLeg_Skeleton.Color = MainTable.SkeletonColor
+        LowerTorso_LeftUpperLeg_Skeleton.Color = MainTable.SkeletonColor
+        RightLowerLeg_RightFoot_Skeleton.Color = MainTable.SkeletonColor
+        RightUpperLeg_RightLowerLeg_Skeleton.Color = MainTable.SkeletonColor
+        LowerTorso_RightUpperLeg_Skeleton.Color = MainTable.SkeletonColor
+        Torso_LeftHand_Skeleton.Color = MainTable.SkeletonColor
+        Torso_LeftLowerArm_Skeleton.Color = MainTable.SkeletonColor
+        Torso_LeftUpperArm_Skeleton.Color = MainTable.SkeletonColor
+        Torso_RightHand_Skeleton.Color = MainTable.SkeletonColor
+        Torso_RightLowerArm_Skeleton.Color = MainTable.SkeletonColor
+        Torso_RightUpperArm_Skeleton.Color = MainTable.SkeletonColor
+        Torso_LowerTorso_Skeleton.Color = MainTable.SkeletonColor
+        Head_Torso_Skeleton.Color = MainTable.SkeletonColor
+
         if MainTable.ESPEnabled then
             if MainTable.Box then
                 BoxOutline.Visible = true
@@ -3689,14 +3924,38 @@ function PlayerESP(Player)
             else
                 HealthText.Visible = false
             end
-        else
-            BoxOutline.Visible = false
-            Box.Visible = false
-            HealthBarOutline.Visible = false
-            HealthBar.Visible = false
-            HealthText.Visible = false
-            NameText.Visible = false
-            DistanceText.Visible = false
+            if MainTable.Skeleton then
+                
+                LeftLowerLeg_LeftFoot_Skeleton.Visible = true
+                LeftUpperLeg_LeftLowerLeg_Skeleton.Visible = true
+                RightLowerLeg_RightFoot_Skeleton.Visible = true
+                RightUpperLeg_RightLowerLeg_Skeleton.Visible = true
+                LowerTorso_LeftUpperLeg_Skeleton.Visible = true
+                LowerTorso_RightUpperLeg_Skeleton.Visible = true
+                Torso_LowerTorso_Skeleton.Visible = true
+                Head_Torso_Skeleton.Visible = true
+                Torso_LeftUpperArm_Skeleton.Visible = true
+                Torso_LeftLowerArm_Skeleton.Visible = true
+                Torso_LeftHand_Skeleton.Visible = true
+                Torso_RightUpperArm_Skeleton.Visible = true
+                Torso_RightLowerArm_Skeleton.Visible = true
+                Torso_RightHand_Skeleton.Visible = true
+            else
+                
+                LeftLowerLeg_LeftFoot_Skeleton.Visible = false
+                LeftUpperLeg_LeftLowerLeg_Skeleton.Visible = false
+                RightLowerLeg_RightFoot_Skeleton.Visible = false
+                RightUpperLeg_RightLowerLeg_Skeleton.Visible = false
+                LowerTorso_LeftUpperLeg_Skeleton.Visible = false
+                LowerTorso_RightUpperLeg_Skeleton.Visible = false
+                Torso_LowerTorso_Skeleton.Visible = false
+                Head_Torso_Skeleton.Visible = false
+                Torso_LeftUpperArm_Skeleton.Visible = false
+                Torso_LeftLowerArm_Skeleton.Visible = false
+                Torso_LeftHand_Skeleton.Visible = false
+                Torso_RightUpperArm_Skeleton.Visible = false
+                Torso_RightLowerArm_Skeleton.Visible = false
+                Torso_RightHand_Skeleton.Visible = false
             end
         else
             BoxOutline.Visible = false
@@ -3706,6 +3965,43 @@ function PlayerESP(Player)
             HealthText.Visible = false
             NameText.Visible = false
             DistanceText.Visible = false
+            LeftLowerLeg_LeftFoot_Skeleton.Visible = false
+            LeftUpperLeg_LeftLowerLeg_Skeleton.Visible = false
+            RightLowerLeg_RightFoot_Skeleton.Visible = false
+            RightUpperLeg_RightLowerLeg_Skeleton.Visible = false
+            LowerTorso_LeftUpperLeg_Skeleton.Visible = false
+            LowerTorso_RightUpperLeg_Skeleton.Visible = false
+            Torso_LowerTorso_Skeleton.Visible = false
+            Head_Torso_Skeleton.Visible = false
+            Torso_LeftUpperArm_Skeleton.Visible = false
+            Torso_LeftLowerArm_Skeleton.Visible = false
+            Torso_LeftHand_Skeleton.Visible = false
+            Torso_RightUpperArm_Skeleton.Visible = false
+            Torso_RightLowerArm_Skeleton.Visible = false
+            Torso_RightHand_Skeleton.Visible = false
+            end
+        else
+            BoxOutline.Visible = false
+            Box.Visible = false
+            HealthBarOutline.Visible = false
+            HealthBar.Visible = false
+            HealthText.Visible = false
+            NameText.Visible = false
+            DistanceText.Visible = false
+            LeftLowerLeg_LeftFoot_Skeleton.Visible = false
+            LeftUpperLeg_LeftLowerLeg_Skeleton.Visible = false
+            RightLowerLeg_RightFoot_Skeleton.Visible = false
+            RightUpperLeg_RightLowerLeg_Skeleton.Visible = false
+            LowerTorso_LeftUpperLeg_Skeleton.Visible = false
+            LowerTorso_RightUpperLeg_Skeleton.Visible = false
+            Torso_LowerTorso_Skeleton.Visible = false
+            Head_Torso_Skeleton.Visible = false
+            Torso_LeftUpperArm_Skeleton.Visible = false
+            Torso_LeftLowerArm_Skeleton.Visible = false
+            Torso_LeftHand_Skeleton.Visible = false
+            Torso_RightUpperArm_Skeleton.Visible = false
+            Torso_RightLowerArm_Skeleton.Visible = false
+            Torso_RightHand_Skeleton.Visible = false
             end
             --
         else
@@ -3716,12 +4012,43 @@ function PlayerESP(Player)
             HealthText.Visible = false
             NameText.Visible = false
             DistanceText.Visible = false
+            LeftLowerLeg_LeftFoot_Skeleton.Visible = false
+            LeftUpperLeg_LeftLowerLeg_Skeleton.Visible = false
+            RightLowerLeg_RightFoot_Skeleton.Visible = false
+            RightUpperLeg_RightLowerLeg_Skeleton.Visible = false
+            LowerTorso_LeftUpperLeg_Skeleton.Visible = false
+            LowerTorso_RightUpperLeg_Skeleton.Visible = false
+            Torso_LowerTorso_Skeleton.Visible = false
+            Head_Torso_Skeleton.Visible = false
+            Torso_LeftUpperArm_Skeleton.Visible = false
+            Torso_LeftLowerArm_Skeleton.Visible = false
+            Torso_LeftHand_Skeleton.Visible = false
+            Torso_RightUpperArm_Skeleton.Visible = false
+            Torso_RightLowerArm_Skeleton.Visible = false
+            Torso_RightHand_Skeleton.Visible = false
             end
         else
-            
+
+
         local RootVector,OnScreen = CC:WorldToViewportPoint(Player.Character.HumanoidRootPart.Position)
         local HeadVector,Visible = CC:WorldToViewportPoint(Player.Character.Head.Position)
         local LeftFoot,Visible = CC:WorldToViewportPoint(Player.Character.HumanoidRootPart.Position - Vector3.new(0,3.4,0))    
+        local HeadV = Camera:WorldToViewportPoint(Player.Character.Head.Position)
+        local TorsoV = Camera:WorldToViewportPoint(Player.Character.UpperTorso.Position)
+        local LowerTorsoV = Camera:WorldToViewportPoint(Player.Character.LowerTorso.Position)
+        local RULV = Camera:WorldToViewportPoint(Player.Character.RightUpperLeg.Position)
+        local RLLV = Camera:WorldToViewportPoint(Player.Character.RightLowerLeg.Position)
+        local RFV = Camera:WorldToViewportPoint(Player.Character.RightFoot.Position)
+        local LULV = Camera:WorldToViewportPoint(Player.Character.LeftUpperLeg.Position)
+        local LLLV = Camera:WorldToViewportPoint(Player.Character.LeftLowerLeg.Position)
+        local LFV = Camera:WorldToViewportPoint(Player.Character.LeftFoot.Position)
+        local LUAV = Camera:WorldToViewportPoint(Player.Character.LeftUpperArm.Position)
+        local LLAV = Camera:WorldToViewportPoint(Player.Character.LeftLowerArm.Position)
+        local LHV = Camera:WorldToViewportPoint(Player.Character.LeftHand.Position)
+        local RUAV = Camera:WorldToViewportPoint(Player.Character.RightUpperArm.Position)
+        local RLAV = Camera:WorldToViewportPoint(Player.Character.RightLowerArm.Position)
+        local RHV = Camera:WorldToViewportPoint(Player.Character.RightHand.Position)
+
 
         if OnScreen then
 
@@ -3767,6 +4094,65 @@ function PlayerESP(Player)
 
         DistanceText.Color = MainTable.DistanceColor
 
+                
+        Head_Torso_Skeleton.From = Vec2(HeadV.X, HeadV.Y)
+        Head_Torso_Skeleton.To = Vec2(TorsoV.X, TorsoV.Y)
+
+        Torso_LowerTorso_Skeleton.From = Vec2(TorsoV.X, TorsoV.Y)
+        Torso_LowerTorso_Skeleton.To = Vec2(LowerTorsoV.X, LowerTorsoV.Y)
+
+        LowerTorso_RightUpperLeg_Skeleton.From = Vec2(LowerTorsoV.X, LowerTorsoV.Y)
+        LowerTorso_RightUpperLeg_Skeleton.To = Vec2(RULV.X, RULV.Y)
+
+        LowerTorso_LeftUpperLeg_Skeleton.From = Vec2(LowerTorsoV.X, LowerTorsoV.Y)
+        LowerTorso_LeftUpperLeg_Skeleton.To = Vec2(LULV.X, LULV.Y)
+
+        RightUpperLeg_RightLowerLeg_Skeleton.From = Vec2(RULV.X, RULV.Y)
+        RightUpperLeg_RightLowerLeg_Skeleton.To = Vec2(RLLV.X, RLLV.Y)
+
+        RightLowerLeg_RightFoot_Skeleton.From = Vec2(RLLV.X, RLLV.Y)
+        RightLowerLeg_RightFoot_Skeleton.To = Vec2(RFV.X, RFV.Y)
+
+        LeftUpperLeg_LeftLowerLeg_Skeleton.From = Vec2(LULV.X, LULV.Y)
+        LeftUpperLeg_LeftLowerLeg_Skeleton.To = Vec2(LLLV.X, LLLV.Y)
+        
+        LeftLowerLeg_LeftFoot_Skeleton.From = Vec2(LLLV.X, LLLV.Y)
+        LeftLowerLeg_LeftFoot_Skeleton.To = Vec2(LFV.X, LFV.Y)
+
+        Torso_RightUpperArm_Skeleton.From = Vec2(TorsoV.X, TorsoV.Y)
+        Torso_RightUpperArm_Skeleton.To = Vec2(RUAV.X, RUAV.Y)
+
+        Torso_RightLowerArm_Skeleton.From = Vec2(RUAV.X, RUAV.Y)
+        Torso_RightLowerArm_Skeleton.To = Vec2(RLAV.X, RLAV.Y)
+
+        Torso_RightHand_Skeleton.From = Vec2(RLAV.X, RLAV.Y)
+        Torso_RightHand_Skeleton.To = Vec2(RHV.X, RHV.Y)
+
+        Torso_LeftUpperArm_Skeleton.From = Vec2(TorsoV.X, TorsoV.Y)
+        Torso_LeftUpperArm_Skeleton.To = Vec2(LUAV.X, LUAV.Y)
+
+        Torso_LeftLowerArm_Skeleton.From = Vec2(LUAV.X, LUAV.Y)
+        Torso_LeftLowerArm_Skeleton.To = Vec2(LLAV.X, LLAV.Y)
+
+        Torso_LeftHand_Skeleton.From = Vec2(LLAV.X, LLAV.Y)
+        Torso_LeftHand_Skeleton.To = Vec2(LHV.X, LHV.Y)
+
+        LeftLowerLeg_LeftFoot_Skeleton.Color = MainTable.SkeletonColor
+        LeftUpperLeg_LeftLowerLeg_Skeleton.Color = MainTable.SkeletonColor
+        LowerTorso_LeftUpperLeg_Skeleton.Color = MainTable.SkeletonColor
+        RightLowerLeg_RightFoot_Skeleton.Color = MainTable.SkeletonColor
+        RightUpperLeg_RightLowerLeg_Skeleton.Color = MainTable.SkeletonColor
+        LowerTorso_RightUpperLeg_Skeleton.Color = MainTable.SkeletonColor
+        Torso_LeftHand_Skeleton.Color = MainTable.SkeletonColor
+        Torso_LeftLowerArm_Skeleton.Color = MainTable.SkeletonColor
+        Torso_LeftUpperArm_Skeleton.Color = MainTable.SkeletonColor
+        Torso_RightHand_Skeleton.Color = MainTable.SkeletonColor
+        Torso_RightLowerArm_Skeleton.Color = MainTable.SkeletonColor
+        Torso_RightUpperArm_Skeleton.Color = MainTable.SkeletonColor
+        Torso_LowerTorso_Skeleton.Color = MainTable.SkeletonColor
+        Head_Torso_Skeleton.Color = MainTable.SkeletonColor
+
+
         if MainTable.ESPEnabled then
             if MainTable.Box then
                 BoxOutline.Visible = true
@@ -3797,14 +4183,39 @@ function PlayerESP(Player)
             else
                 HealthText.Visible = false
             end
-        else
-            BoxOutline.Visible = false
-            Box.Visible = false
-            HealthBarOutline.Visible = false
-            HealthBar.Visible = false
-            HealthText.Visible = false
-            NameText.Visible = false
-            DistanceText.Visible = false
+            
+            if MainTable.Skeleton then
+                
+                LeftLowerLeg_LeftFoot_Skeleton.Visible = true
+                LeftUpperLeg_LeftLowerLeg_Skeleton.Visible = true
+                RightLowerLeg_RightFoot_Skeleton.Visible = true
+                RightUpperLeg_RightLowerLeg_Skeleton.Visible = true
+                LowerTorso_LeftUpperLeg_Skeleton.Visible = true
+                LowerTorso_RightUpperLeg_Skeleton.Visible = true
+                Torso_LowerTorso_Skeleton.Visible = true
+                Head_Torso_Skeleton.Visible = true
+                Torso_LeftUpperArm_Skeleton.Visible = true
+                Torso_LeftLowerArm_Skeleton.Visible = true
+                Torso_LeftHand_Skeleton.Visible = true
+                Torso_RightUpperArm_Skeleton.Visible = true
+                Torso_RightLowerArm_Skeleton.Visible = true
+                Torso_RightHand_Skeleton.Visible = true
+            else
+                
+                LeftLowerLeg_LeftFoot_Skeleton.Visible = false
+                LeftUpperLeg_LeftLowerLeg_Skeleton.Visible = false
+                RightLowerLeg_RightFoot_Skeleton.Visible = false
+                RightUpperLeg_RightLowerLeg_Skeleton.Visible = false
+                LowerTorso_LeftUpperLeg_Skeleton.Visible = false
+                LowerTorso_RightUpperLeg_Skeleton.Visible = false
+                Torso_LowerTorso_Skeleton.Visible = false
+                Head_Torso_Skeleton.Visible = false
+                Torso_LeftUpperArm_Skeleton.Visible = false
+                Torso_LeftLowerArm_Skeleton.Visible = false
+                Torso_LeftHand_Skeleton.Visible = false
+                Torso_RightUpperArm_Skeleton.Visible = false
+                Torso_RightLowerArm_Skeleton.Visible = false
+                Torso_RightHand_Skeleton.Visible = false
             end
         else
             BoxOutline.Visible = false
@@ -3814,6 +4225,43 @@ function PlayerESP(Player)
             HealthText.Visible = false
             NameText.Visible = false
             DistanceText.Visible = false
+            LeftLowerLeg_LeftFoot_Skeleton.Visible = false
+            LeftUpperLeg_LeftLowerLeg_Skeleton.Visible = false
+            RightLowerLeg_RightFoot_Skeleton.Visible = false
+            RightUpperLeg_RightLowerLeg_Skeleton.Visible = false
+            LowerTorso_LeftUpperLeg_Skeleton.Visible = false
+            LowerTorso_RightUpperLeg_Skeleton.Visible = false
+            Torso_LowerTorso_Skeleton.Visible = false
+            Head_Torso_Skeleton.Visible = false
+            Torso_LeftUpperArm_Skeleton.Visible = false
+            Torso_LeftLowerArm_Skeleton.Visible = false
+            Torso_LeftHand_Skeleton.Visible = false
+            Torso_RightUpperArm_Skeleton.Visible = false
+            Torso_RightLowerArm_Skeleton.Visible = false
+            Torso_RightHand_Skeleton.Visible = false
+            end
+        else
+            BoxOutline.Visible = false
+            Box.Visible = false
+            HealthBarOutline.Visible = false
+            HealthBar.Visible = false
+            HealthText.Visible = false
+            NameText.Visible = false
+            DistanceText.Visible = false
+            LeftLowerLeg_LeftFoot_Skeleton.Visible = false
+            LeftUpperLeg_LeftLowerLeg_Skeleton.Visible = false
+            RightLowerLeg_RightFoot_Skeleton.Visible = false
+            RightUpperLeg_RightLowerLeg_Skeleton.Visible = false
+            LowerTorso_LeftUpperLeg_Skeleton.Visible = false
+            LowerTorso_RightUpperLeg_Skeleton.Visible = false
+            Torso_LowerTorso_Skeleton.Visible = false
+            Head_Torso_Skeleton.Visible = false
+            Torso_LeftUpperArm_Skeleton.Visible = false
+            Torso_LeftLowerArm_Skeleton.Visible = false
+            Torso_LeftHand_Skeleton.Visible = false
+            Torso_RightUpperArm_Skeleton.Visible = false
+            Torso_RightLowerArm_Skeleton.Visible = false
+            Torso_RightHand_Skeleton.Visible = false
             end
         end
         else
@@ -3824,6 +4272,20 @@ function PlayerESP(Player)
             HealthText.Visible = false
             NameText.Visible = false
             DistanceText.Visible = false
+            LeftLowerLeg_LeftFoot_Skeleton.Visible = false
+            LeftUpperLeg_LeftLowerLeg_Skeleton.Visible = false
+            RightLowerLeg_RightFoot_Skeleton.Visible = false
+            RightUpperLeg_RightLowerLeg_Skeleton.Visible = false
+            LowerTorso_LeftUpperLeg_Skeleton.Visible = false
+            LowerTorso_RightUpperLeg_Skeleton.Visible = false
+            Torso_LowerTorso_Skeleton.Visible = false
+            Head_Torso_Skeleton.Visible = false
+            Torso_LeftUpperArm_Skeleton.Visible = false
+            Torso_LeftLowerArm_Skeleton.Visible = false
+            Torso_LeftHand_Skeleton.Visible = false
+            Torso_RightUpperArm_Skeleton.Visible = false
+            Torso_RightLowerArm_Skeleton.Visible = false
+            Torso_RightHand_Skeleton.Visible = false
         end
     end)
 end
@@ -3874,6 +4336,24 @@ end})
 WorldSection:Toggle({name = "Shadows", def = game.Lighting.GlobalShadows, callback = function(v)  
     game.Lighting.GlobalShadows = v
 end})
+
+local ScreenSection = VisualsTab:Section({name = "Screen", side = "right"})
+
+ScreenSection:Toggle({name = "Aspect Ratio", def = false, callback = function(v)  
+    MainTable.AspectRatio = v
+end})
+
+ScreenSection:Slider({name = "Ratio", min = 1, max = 100, dec = 1, suf = "%", def = 100, callback = function(v)
+    MainTable.Ratio = v
+end})
+
+OldNewIndex = hookmetamethod(game, "__newindex", function(self, Key, Value)
+    if (self == game.Workspace.CurrentCamera and Key == "CFrame") and MainTable.AspectRatio then 
+        local X, Y, Z, R00, R01, R02, R10, R11, R12, R20, R21, R22 = Value:GetComponents()
+        Value = CFrame.new(X, Y, Z, R00, R01 * MainTable.Ratio / 100, R02, R10, R11 * MainTable.Ratio / 100, R12, R20, R21 * MainTable.Ratio / 100, R22)
+    end
+    return OldNewIndex(self, Key, Value)
+end)
 
 
 local PlayersSection = MiscTab:Section({name = "Players", side = "left"})
