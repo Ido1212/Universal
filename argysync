@@ -2,6 +2,7 @@
 **Change Logs
 [+] Updated to lastest ui version
 [+] Added Skeleton ESP (Will drop fps insanely, You can dm me if you want it removed because of the fps)
+[#] Fixed Time Changer Showing Flooded Values
 --]]
 
 --[[
@@ -14,7 +15,9 @@ I would like to hear your opinion and suggestion, even if its bad or its good: a
 I ask, don't steal/paste off the code, few months ago I used to do that and it was a mistake it is more fun to do it yourself.
 Anyways this script was made in Synapse X, It might work on other executors but this is the most trusted one.
 Enjoy Your Time!
---]]local MenuBind = Enum.KeyCode.Insert
+--]]
+local MenuBind = Enum.KeyCode.Insert
+
 local uis = game:GetService("UserInputService")
 local rs = game:GetService("RunService")
 local ts = game:GetService("TweenService")
@@ -4309,7 +4312,7 @@ WorldSection:Slider({name = "Brightness", min = 0, max = 9, dec = 1, suf = "", d
     game.Lighting.Brightness = v
 end})
 
-WorldSection:Slider({name = "Time", min = 0, max = 24, dec = 1, suf = "hr", def = game.Lighting.ClockTime, callback = function(v)
+WorldSection:Slider({name = "Time", min = 0, max = 24, dec = 1, suf = "hr", def = math.floor(game.Lighting.ClockTime), callback = function(v)
     game.Lighting.ClockTime = v
 end})
 
